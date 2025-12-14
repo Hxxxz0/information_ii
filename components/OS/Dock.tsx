@@ -19,19 +19,18 @@ export const Dock: React.FC<DockProps> = ({ onAppClick, openApps }) => {
   ];
 
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40">
-      <div className="glass-panel px-8 py-3 rounded-full flex items-end gap-6 shadow-2xl">
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-full flex justify-center px-4">
+      <div className="glass-panel px-4 lg:px-8 py-2 lg:py-3 rounded-full flex items-end gap-2 lg:gap-6 shadow-2xl overflow-x-auto max-w-full custom-scrollbar">
         {items.map((item) => {
           const isOpen = openApps.includes(item.id);
           return (
             <div
               key={item.id}
               onClick={() => onAppClick(item.id)}
-              className="group flex flex-col items-center gap-1 cursor-pointer transition-transform hover:-translate-y-2"
+              className="group flex flex-col items-center gap-1 cursor-pointer transition-transform hover:-translate-y-2 shrink-0"
             >
-              <div className={`w-12 h-12 rounded-2xl ${item.color} flex items-center justify-center text-white shadow-lg ${item.shadow} border-b-4 border-black/10 relative ${
-                isOpen ? 'ring-2 ring-white ring-offset-2 ring-offset-transparent' : ''
-              }`}>
+              <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-2xl ${item.color} flex items-center justify-center text-white shadow-lg ${item.shadow} border-b-4 border-black/10 relative ${isOpen ? 'ring-2 ring-white ring-offset-2 ring-offset-transparent' : ''
+                }`}>
                 <item.icon className="w-6 h-6" />
                 {isOpen && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full"></div>
