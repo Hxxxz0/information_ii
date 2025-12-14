@@ -10,6 +10,7 @@ import { EnergyApp } from './components/EnergyApp';
 import { MoodApp } from './components/MoodApp';
 import { MessageBoardApp } from './components/MessageBoardApp';
 import { OceanApp } from './components/OceanApp';
+import { SettingsApp } from './components/SettingsApp';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ArrowRight, CheckCircle2, Clock, Calendar, GraduationCap, PenTool, BarChart3, Star, Wifi } from 'lucide-react';
 
@@ -23,10 +24,23 @@ const App: React.FC = () => {
     moodOpen: false,
     messageBoardOpen: false,
     oceanOpen: false,
+    settingsOpen: false,
   });
+  const [telecomInitialTab, setTelecomInitialTab] = useState<string | undefined>(undefined);
 
-  const openTelecomApp = () => setAppState(prev => ({ ...prev, telecomOpen: true }));
-  const closeTelecomApp = () => setAppState(prev => ({ ...prev, telecomOpen: false }));
+  const openTelecomApp = (initialTab?: string) => {
+    if (initialTab) {
+      setTelecomInitialTab(initialTab);
+    }
+    setAppState(prev => ({ ...prev, telecomOpen: true }));
+  };
+  const closeTelecomApp = () => {
+    setAppState(prev => ({ ...prev, telecomOpen: false }));
+    setTelecomInitialTab(undefined);
+  };
+  
+  const openSettingsWindow = () => setAppState(prev => ({ ...prev, settingsOpen: true }));
+  const closeSettingsWindow = () => setAppState(prev => ({ ...prev, settingsOpen: false }));
 
   const openSignalLab = () => setAppState(prev => ({ ...prev, signalLabOpen: true }));
   const closeSignalLab = () => setAppState(prev => ({ ...prev, signalLabOpen: false }));
@@ -62,7 +76,9 @@ const App: React.FC = () => {
           moodOpen: false,
           messageBoardOpen: false,
           oceanOpen: false,
+          settingsOpen: false,
         });
+        setTelecomInitialTab(undefined);
         break;
     }
   };
@@ -200,7 +216,10 @@ const App: React.FC = () => {
           {/* Sub Grid - Replaced middle card with Signal Lab */}
           <div className="flex-1 grid grid-cols-2 gap-4 shrink-0">
             {/* Card 1 */}
-            <div className="glass-card rounded-[2rem] p-5 flex flex-col justify-between hover:bg-white/90 cursor-pointer transition-colors group min-h-[160px]">
+            <div 
+              onClick={() => openTelecomApp('agent')}
+              className="glass-card rounded-[2rem] p-5 flex flex-col justify-between hover:bg-white/90 cursor-pointer transition-colors group min-h-[160px]"
+            >
               <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                 <GraduationCap className="w-5 h-5" />
               </div>
@@ -226,7 +245,10 @@ const App: React.FC = () => {
             </div>
 
             {/* Card 3 */}
-            <div className="glass-card rounded-[2rem] p-5 flex flex-col justify-between hover:bg-white/90 cursor-pointer transition-colors group min-h-[160px]">
+            <div 
+              onClick={() => openTelecomApp('exams')}
+              className="glass-card rounded-[2rem] p-5 flex flex-col justify-between hover:bg-white/90 cursor-pointer transition-colors group min-h-[160px]"
+            >
               <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                 <BarChart3 className="w-5 h-5" />
               </div>
@@ -264,7 +286,7 @@ const App: React.FC = () => {
         onMinimize={() => { }}
       >
         <ErrorBoundary>
-          <TelecomApp />
+          <TelecomApp initialTab={telecomInitialTab} onOpenSettings={openSettingsWindow} />
         </ErrorBoundary>
       </Window>
 
@@ -301,7 +323,7 @@ const App: React.FC = () => {
         onMinimize={() => { }}
       >
         <ErrorBoundary>
-          <TrainingApp />
+          <TrainingApp onStartTraining={() => openTelecomApp('practice')} />
         </ErrorBoundary>
       </Window>
 
@@ -350,6 +372,18 @@ const App: React.FC = () => {
       >
         <ErrorBoundary>
           <OceanApp />
+        </ErrorBoundary>
+      </Window>
+
+      {/* WINDOW 9: Settings App */}
+      <Window
+        title="设置"
+        isOpen={appState.settingsOpen}
+        onClose={closeSettingsWindow}
+        onMinimize={() => { }}
+      >
+        <ErrorBoundary>
+          <SettingsApp />
         </ErrorBoundary>
       </Window>
 

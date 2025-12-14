@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, Target, TrendingUp, Clock, Flame } from 'lucide-react';
+import { Trophy, Target, TrendingUp, Clock, Flame, Play } from 'lucide-react';
 
 interface TrainingRecord {
   id: string;
@@ -9,7 +9,11 @@ interface TrainingRecord {
   date: string;
 }
 
-export const TrainingApp: React.FC = () => {
+interface TrainingAppProps {
+  onStartTraining?: () => void;
+}
+
+export const TrainingApp: React.FC<TrainingAppProps> = ({ onStartTraining }) => {
   const [records, setRecords] = useState<TrainingRecord[]>([
     { id: '1', type: 'OFDM练习', duration: 30, score: 85, date: '2024-12-23' },
     { id: '2', type: '采样定理训练', duration: 25, score: 92, date: '2024-12-22' },
@@ -59,6 +63,19 @@ export const TrainingApp: React.FC = () => {
             <p className="text-sm text-violet-600 mt-1">天</p>
           </div>
         </div>
+
+        {/* Start Training Button */}
+        {onStartTraining && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-violet-200 mb-6">
+            <button
+              onClick={onStartTraining}
+              className="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-3 hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+            >
+              <Play className="w-6 h-6" />
+              开始新的训练
+            </button>
+          </div>
+        )}
 
         {/* Training Records */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-violet-200">

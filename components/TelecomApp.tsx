@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Role, Exam, Question } from '../types';
 import { MOCK_QUESTIONS } from '../constants';
 import { Sidebar } from './Sidebar';
@@ -8,10 +8,22 @@ import { ExamView } from './ExamView';
 import { MisconceptionView } from './MisconceptionView';
 import { geminiService } from '../services/geminiService';
 
-const TelecomApp: React.FC = () => {
+interface TelecomAppProps {
+  initialTab?: string;
+  onOpenSettings?: () => void;
+}
+
+const TelecomApp: React.FC<TelecomAppProps> = ({ initialTab, onOpenSettings }) => {
   // State for navigation and role simulation
   const [currentRole, setCurrentRole] = useState<Role>(Role.STUDENT);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(initialTab || 'dashboard');
+  
+  // Update activeTab when initialTab changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   
   // State for generated exams (simulating data persistence)
   const [generatedExams, setGeneratedExams] = useState<Exam[]>([]);
@@ -62,7 +74,7 @@ const TelecomApp: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard role={currentRole} />;
+        return <Dashboard role={currentRole} onNavigate={setActiveTab} />;
       case 'agent':
         return <ChatAgent role={currentRole} onGenerateExam={handleGenerateExam} />;
       case 'exams':
@@ -77,7 +89,7 @@ const TelecomApp: React.FC = () => {
       case 'misconceptions':
         return <MisconceptionView role={currentRole} onPracticeMisconception={handlePracticeMisconception} />;
       default:
-        return <Dashboard role={currentRole} />;
+        return <Dashboard role={currentRole} onNavigate={setActiveTab} />;
     }
   };
 
@@ -88,6 +100,7 @@ const TelecomApp: React.FC = () => {
         activeTab={activeTab} 
         setActiveTab={setActiveTab}
         toggleRole={toggleRole}
+        onOpenSettings={onOpenSettings}
       />
       
       <main className="flex-1 p-8 h-full overflow-y-auto bg-white/50">

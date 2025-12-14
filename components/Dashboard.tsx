@@ -20,9 +20,10 @@ import { Activity, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react'
 
 interface DashboardProps {
   role: Role;
+  onNavigate?: (tab: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ role }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ role, onNavigate }) => {
   // Prepare data for charts
   const radarData = KNOWLEDGE_POINTS.map(kp => ({
     subject: kp.name,
@@ -91,7 +92,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ role }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div 
+          onClick={() => role === Role.STUDENT && onNavigate && onNavigate('misconceptions')}
+          className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow ${
+            role === Role.STUDENT && onNavigate ? 'cursor-pointer hover:border-amber-300' : ''
+          }`}
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium text-slate-500">{role === Role.STUDENT ? '薄弱环节' : '风险提醒'}</p>
@@ -103,6 +109,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ role }) => {
           </div>
           <div className="mt-4 flex items-center text-sm text-amber-600">
             <span>{role === Role.STUDENT ? '掌握度：40%' : '低于60%的学生'}</span>
+            {role === Role.STUDENT && onNavigate && (
+              <span className="ml-2 text-xs text-amber-500">点击查看详情 →</span>
+            )}
           </div>
         </div>
 

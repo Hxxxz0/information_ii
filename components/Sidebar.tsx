@@ -16,9 +16,10 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   toggleRole: () => void;
+  onOpenSettings?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab, toggleRole }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab, toggleRole, onOpenSettings }) => {
   const menuItems = [
     { id: 'dashboard', label: '仪表板', icon: LayoutDashboard },
     { id: 'agent', label: 'AI助手', icon: MessageSquare },
@@ -76,7 +77,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab,
             </button>
           </div>
         </div>
-        <button className="w-full flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-600 transition-colors font-medium">
+        <button 
+          onClick={onOpenSettings}
+          className="w-full flex items-center gap-3 px-4 py-2 text-slate-400 hover:text-slate-600 transition-colors font-medium"
+        >
           <Settings className="w-5 h-5" />
           <span>设置</span>
         </button>
