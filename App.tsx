@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MenuBar } from './components/OS/MenuBar';
 import { Dock } from './components/OS/Dock';
 import { Window } from './components/OS/Window';
@@ -11,10 +11,30 @@ import { MoodApp } from './components/MoodApp';
 import { MessageBoardApp } from './components/MessageBoardApp';
 import { OceanApp } from './components/OceanApp';
 import { SettingsApp } from './components/SettingsApp';
+import { GuideApp } from './components/GuideApp';
+import { SearchApp } from './components/SearchApp';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ArrowRight, CheckCircle2, Clock, Calendar, GraduationCap, PenTool, BarChart3, Star, Wifi } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, Calendar, GraduationCap, PenTool, BarChart3, Star, Wifi, Wand2 } from 'lucide-react';
+import { aiService, AIProvider } from './services/aiService';
+import { SmartExamBuilder } from './components/SmartExamBuilder';
+import { Role } from './types';
 
 const App: React.FC = () => {
+  // 应用启动时从 localStorage 读取 AI 提供商设置
+  useEffect(() => {
+    try {
+      const savedProvider = localStorage.getItem('aiProvider') as AIProvider;
+      if (savedProvider) {
+        aiService.setProvider(savedProvider);
+        console.log('🚀 应用启动 - AI 提供商已设置为:', savedProvider);
+      } else {
+        console.log('🚀 应用启动 - 使用默认 AI 提供商: gemini');
+      }
+    } catch (error) {
+      console.error('读取 AI 提供商设置失败:', error);
+    }
+  }, []);
+
   const [appState, setAppState] = useState({
     telecomOpen: false,
     signalLabOpen: false,
@@ -25,8 +45,36 @@ const App: React.FC = () => {
     messageBoardOpen: false,
     oceanOpen: false,
     settingsOpen: false,
+    guideOpen: false,
+    searchOpen: false,
+    smartExamOpen: false,
   });
   const [telecomInitialTab, setTelecomInitialTab] = useState<string | undefined>(undefined);
+  type PlanCardItem = {
+    title: string;
+    time: string;
+    tag: string;
+    tone: 'blue' | 'purple' | 'amber';
+  };
+  type PlanForm = {
+    goal: string;
+    timeframe: string;
+    daily: string;
+    focus: string;
+  };
+  const defaultPlanItems: PlanCardItem[] = [
+    { title: '14天正念计划', time: '16:50', tag: '系统提醒', tone: 'blue' },
+    { title: '情绪管理计划', time: '10:30', tag: '自定义通知', tone: 'purple' },
+  ];
+  const [planItems, setPlanItems] = useState<PlanCardItem[]>(defaultPlanItems);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [planForm, setPlanForm] = useState<PlanForm>({
+    goal: '备考本周小测',
+    timeframe: '本周',
+    daily: '30 分钟/天',
+    focus: 'OFDM + MIMO',
+  });
 
   const openTelecomApp = (initialTab?: string) => {
     if (initialTab) {
@@ -41,9 +89,68 @@ const App: React.FC = () => {
   
   const openSettingsWindow = () => setAppState(prev => ({ ...prev, settingsOpen: true }));
   const closeSettingsWindow = () => setAppState(prev => ({ ...prev, settingsOpen: false }));
+  
+  const openGuideWindow = () => setAppState(prev => ({ ...prev, guideOpen: true }));
+  const closeGuideWindow = () => setAppState(prev => ({ ...prev, guideOpen: false }));
+  
+  const openSearchWindow = () => setAppState(prev => ({ ...prev, searchOpen: true }));
+  const closeSearchWindow = () => setAppState(prev => ({ ...prev, searchOpen: false }));
 
   const openSignalLab = () => setAppState(prev => ({ ...prev, signalLabOpen: true }));
   const closeSignalLab = () => setAppState(prev => ({ ...prev, signalLabOpen: false }));
+
+  const openSmartExam = () => setAppState(prev => ({ ...prev, smartExamOpen: true }));
+  const closeSmartExam = () => setAppState(prev => ({ ...prev, smartExamOpen: false }));
+
+  const toneStyles: Record<PlanCardItem['tone'], { icon: string; badge: string }> = {
+    blue: { icon: 'bg-blue-100 text-blue-600', badge: 'bg-blue-50 text-blue-600' },
+    purple: { icon: 'bg-purple-100 text-purple-600', badge: 'bg-purple-50 text-purple-600' },
+    amber: { icon: 'bg-amber-100 text-amber-600', badge: 'bg-amber-50 text-amber-600' },
+  };
+
+  const handleGeneratePlan = async (form: PlanForm) => {
+    if (planLoading) return;
+    setPlanLoading(true);
+    try {
+      const existingTitles = planItems.map(p => p.title).slice(0, 5).join('；') || '无';
+      const prompt = `你是学习教练，请生成 ${form.timeframe} 的 3-4 条学习计划，面向电信专业学生。
+目标：${form.goal}
+重点：${form.focus || '通信基础'}
+每日可用时长：${form.daily || '30 分钟'}
+避免与这些计划重复：${existingTitles}
+输出要求：只返回 JSON 数组，每项包含：
+- title: 任务标题（<=20字）
+- time: 建议时间或时间段（如 "16:50" 或 "晚间30分钟"）
+- tag: 提醒或类型（如 "系统提醒"、"复习"、"练习"）
+不要多余说明，不要 markdown 代码块。`;
+      const response = await aiService.sendMessage(prompt);
+      const cleaned = response.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+      let parsed: any[] = [];
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (parseErr) {
+        console.error('Plan parse failed, fallback to default', parseErr, cleaned);
+        parsed = [];
+      }
+      const tones: PlanCardItem['tone'][] = ['blue', 'purple', 'amber'];
+      const mapped = parsed.slice(0, 4).map((item, idx) => ({
+        title: item.title || `任务 ${idx + 1}`,
+        time: item.time || item.dueTime || '待定',
+        tag: item.tag || 'AI生成',
+        tone: tones[idx % tones.length],
+      }));
+      if (mapped.length) {
+        setPlanItems(mapped);
+      } else {
+        setPlanItems(defaultPlanItems);
+      }
+    } catch (error) {
+      console.error('Generate plan failed', error);
+      setPlanItems(defaultPlanItems);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
 
   const handleDockClick = (appId: string) => {
     switch (appId) {
@@ -77,6 +184,8 @@ const App: React.FC = () => {
           messageBoardOpen: false,
           oceanOpen: false,
           settingsOpen: false,
+          guideOpen: false,
+          searchOpen: false,
         });
         setTelecomInitialTab(undefined);
         break;
@@ -86,7 +195,12 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen overflow-hidden font-sans text-slate-900 relative">
       {/* Top Bar */}
-      <MenuBar />
+      <MenuBar 
+        onOpenGuide={openGuideWindow}
+        onOpenMessages={() => setAppState(prev => ({ ...prev, messageBoardOpen: true }))}
+        onOpenProfile={openSettingsWindow}
+        onOpenSearch={openSearchWindow}
+      />
 
       {/* Main Content Grid - Responsive: Stacked on Mobile, 12-Col Grid on Desktop */}
       <div className="absolute inset-0 z-0 overflow-y-auto overflow-x-hidden pointer-events-auto scroll-smooth
@@ -139,47 +253,56 @@ const App: React.FC = () => {
                 <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">.. 今日宝藏 ..</h2>
                 <h3 className="text-2xl font-black text-slate-800">我的学习计划</h3>
               </div>
-              <button className="text-xs font-bold text-slate-500 bg-white/50 px-3 py-1 rounded-full">家庭任务</button>
+              <button
+                onClick={() => setPlanModalOpen(true)}
+                disabled={planLoading}
+                className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 ${
+                  planLoading
+                    ? 'bg-slate-200 text-slate-400'
+                    : 'bg-white/70 text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                {planLoading ? '生成中...' : 'AI 生成计划'}
+              </button>
             </div>
 
             {/* Timeline Items */}
             <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-              {/* Item 1 */}
-              <div className="bg-white/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                    <Calendar className="w-6 h-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-slate-800 truncate">14天正念计划</h4>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 font-bold mt-1">
-                      <Clock className="w-3 h-3" /> 16:50
-                    </div>
-                  </div>
+              {planLoading && (
+                <div className="bg-white/70 p-4 rounded-2xl border border-slate-100 animate-pulse text-slate-400 text-sm">
+                  正在生成个性化学习计划...
                 </div>
-                <button className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg shrink-0">系统提醒</button>
-              </div>
-
-              {/* Item 2 */}
-              <div className="bg-white/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                    <Star className="w-6 h-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-slate-800 truncate">情绪管理计划</h4>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 font-bold mt-1">
-                      <Clock className="w-3 h-3" /> 10:30
+              )}
+              {planItems.map((item, idx) => {
+                const tone = toneStyles[item.tone] || toneStyles.blue;
+                const Icon = item.tone === 'purple' ? Star : Calendar;
+                return (
+                  <div
+                    key={`${item.title}-${idx}`}
+                    className="bg-white/80 p-4 rounded-2xl flex items-center justify-between shadow-sm hover:shadow-md transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl ${tone.icon} flex items-center justify-center shrink-0`}>
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-800 truncate">{item.title}</h4>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 font-bold mt-1">
+                          <Clock className="w-3 h-3" /> {item.time}
+                        </div>
+                      </div>
                     </div>
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-lg shrink-0 ${tone.badge}`}>
+                      {item.tag}
+                    </span>
                   </div>
+                );
+              })}
+              {planItems.length === 0 && !planLoading && (
+                <div className="border-2 border-dashed border-slate-300/50 rounded-2xl flex-1 flex items-center justify-center text-slate-400 font-medium text-sm min-h-[100px]">
+                  暂无计划，点击“AI 生成计划”开始
                 </div>
-                <button className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg shrink-0">自定义通知</button>
-              </div>
-
-              {/* Empty State / Filler */}
-              <div className="border-2 border-dashed border-slate-300/50 rounded-2xl flex-1 flex items-center justify-center text-slate-400 font-medium text-sm min-h-[100px]">
-                今天没有更多任务了！
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -257,6 +380,20 @@ const App: React.FC = () => {
                 <p className="text-[10px] text-slate-500 mt-1">自我检查</p>
               </div>
             </div>
+
+            {/* Card 4: Smart Exam Builder */}
+            <div
+              onClick={openSmartExam}
+              className="glass-card rounded-[2rem] p-5 flex flex-col justify-between hover:bg-white/90 cursor-pointer transition-colors group min-h-[160px]"
+            >
+              <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                <Wand2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-800 leading-tight">智能<br />组卷</h4>
+                <p className="text-[10px] text-slate-500 mt-1">个性化试卷</p>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -277,6 +414,86 @@ const App: React.FC = () => {
           ...(appState.oceanOpen ? ['ocean'] : []),
         ]}
       />
+
+      {/* PLAN MODAL */}
+      {planModalOpen && (
+        <div className="fixed inset-0 z-[120] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 border border-slate-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase font-bold text-slate-400">AI 生成计划</p>
+                <h3 className="text-xl font-black text-slate-900">个性化学习计划</h3>
+              </div>
+              <button
+                onClick={() => setPlanModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">目标</label>
+                <input
+                  value={planForm.goal}
+                  onChange={(e) => setPlanForm({ ...planForm, goal: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="如：备考周五通信原理小测"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">时间范围</label>
+                  <input
+                    value={planForm.timeframe}
+                    onChange={(e) => setPlanForm({ ...planForm, timeframe: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="本周 / 3天 / 今日"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase">每日时长</label>
+                  <input
+                    value={planForm.daily}
+                    onChange={(e) => setPlanForm({ ...planForm, daily: e.target.value })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="30 分钟/天"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">重点/知识点</label>
+                <input
+                  value={planForm.focus}
+                  onChange={(e) => setPlanForm({ ...planForm, focus: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="如：OFDM 循环前缀 + MIMO 基础"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setPlanModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  setPlanModalOpen(false);
+                  handleGeneratePlan(planForm);
+                }}
+                disabled={planLoading}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-60"
+              >
+                {planLoading ? '生成中...' : '生成计划'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* WINDOW 1: Telecom App */}
       <Window
@@ -384,6 +601,50 @@ const App: React.FC = () => {
       >
         <ErrorBoundary>
           <SettingsApp />
+        </ErrorBoundary>
+      </Window>
+
+      {/* WINDOW 10: Guide App */}
+      <Window
+        title="使用指南"
+        isOpen={appState.guideOpen}
+        onClose={closeGuideWindow}
+        onMinimize={() => { }}
+      >
+        <ErrorBoundary>
+          <GuideApp />
+        </ErrorBoundary>
+      </Window>
+
+      {/* WINDOW 11: Search App */}
+      <Window
+        title="搜索"
+        isOpen={appState.searchOpen}
+        onClose={closeSearchWindow}
+        onMinimize={() => { }}
+      >
+        <ErrorBoundary>
+          <SearchApp />
+        </ErrorBoundary>
+      </Window>
+
+      {/* WINDOW 12: Smart Exam Builder */}
+      <Window
+        title="智能组卷"
+        isOpen={appState.smartExamOpen}
+        onClose={closeSmartExam}
+        onMinimize={() => { }}
+      >
+        <ErrorBoundary>
+          <SmartExamBuilder 
+            role={Role.STUDENT}
+            chatHistory={[]}
+            existingExams={[]}
+            onSaveExam={(exam) => {
+              console.log('保存试卷:', exam);
+              // 可以在这里添加保存逻辑，比如打开 TelecomApp 的 exams 标签页
+            }}
+          />
         </ErrorBoundary>
       </Window>
 

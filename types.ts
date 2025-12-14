@@ -67,3 +67,12 @@ export interface ChatMessage {
     payload: any;
   };
 }
+
+export interface SmartQuestionConfig {
+  topic: string;
+  knowledgePoints: string[];
+  type?: QuestionType;
+  difficulty?: Difficulty;
+  chatHistory?: string[];
+  avoidTopics?: string[];
+}

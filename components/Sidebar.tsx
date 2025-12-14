@@ -7,8 +7,9 @@ import {
   GraduationCap, 
   BarChart3, 
   Settings, 
-  LogOut,
-  Cpu
+  Cpu,
+  Wand2,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -17,13 +18,15 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   toggleRole: () => void;
   onOpenSettings?: () => void;
+  onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab, toggleRole, onOpenSettings }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab, toggleRole, onOpenSettings, onClose }) => {
   const menuItems = [
     { id: 'dashboard', label: '仪表板', icon: LayoutDashboard },
     { id: 'agent', label: 'AI助手', icon: MessageSquare },
     { id: 'exams', label: role === Role.TEACHER ? '考试创建器' : '我的考试', icon: BookOpen },
+    { id: 'smart-exam', label: '智能组卷', icon: Wand2 },
     { id: 'misconceptions', label: '误解分析', icon: BarChart3 },
   ];
 
@@ -32,15 +35,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ role, activeTab, setActiveTab,
   }
 
   return (
-    <div className="w-64 bg-slate-50 border-r border-slate-200 text-slate-600 flex flex-col h-full flex-shrink-0">
-      <div className="p-8 flex items-center gap-3">
+    <div className="w-64 bg-slate-50 border-r border-slate-200 text-slate-600 flex flex-col h-full flex-shrink-0 shadow-xl lg:shadow-none">
+      <div className="p-6 lg:p-8 flex items-center gap-3">
         <div className="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-200">
           <Cpu className="text-white w-6 h-6" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-black text-slate-800 tracking-tight">TelecomAI</h1>
           <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">教育助手 v1.0</p>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1 hover:bg-slate-200 rounded-lg transition-colors"
+            aria-label="关闭菜单"
+          >
+            <X className="w-5 h-5 text-slate-600" />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 px-4 space-y-2 overflow-y-auto">

@@ -1,26 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Role, ChatMessage, Question } from '../types';
-import { geminiService } from '../services/geminiService';
+import { aiService } from '../services/aiService';
 import { Send, Bot, User, Loader2, Sparkles, FileText } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatAgentProps {
   role: Role;
   onGenerateExam?: (topic: string, questions: Question[]) => void;
+  messages?: ChatMessage[];
+  onMessagesChange?: (msgs: ChatMessage[]) => void;
 }
 
-export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) => {
+export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam, messages: externalMessages, onMessagesChange }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'model',
-      text: role === Role.TEACHER 
-        ? "您好，教授。我随时准备帮助您设计考试、分析班级表现或生成误解报告。试试问：'创建一个关于MIMO系统的测验'。"
-        : "你好！我是你的电信导师。我可以帮助你解决练习题或解释像'采样定理'这样的概念。试试问：'给我3道关于OFDM的练习题'。",
-      timestamp: Date.now(),
+  const defaultWelcome: ChatMessage = {
+    id: 'welcome',
+    role: 'model',
+    text: role === Role.TEACHER
+      ? "您好，教授。我随时准备帮助您设计考试、分析班级表现或生成误解报告。试试问：'创建一个关于MIMO系统的测验'。"
+      : "你好！我是你的电信导师。我可以帮助你解决练习题或解释像'采样定理'这样的概念。试试问：'给我3道关于OFDM的练习题'。",
+    timestamp: Date.now(),
+  };
+  const [internalMessages, setInternalMessages] = useState<ChatMessage[]>(externalMessages || [defaultWelcome]);
+  const isControlled = !!externalMessages;
+  const chatMessages = isControlled ? externalMessages! : internalMessages;
+  const updateMessages = (updater: (prev: ChatMessage[]) => ChatMessage[]) => {
+    if (onMessagesChange) {
+      onMessagesChange(updater(chatMessages));
+    } else {
+      setInternalMessages(updater);
     }
-  ]);
+  };
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -29,7 +41,7 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [chatMessages]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -41,7 +53,7 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
       timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    updateMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
 
@@ -49,27 +61,27 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
     // In a production app, we would use Gemini's "Function Calling" to detect this intent accurately.
     const examKeywords = ['exam', 'quiz', 'test', 'questions', 'practice'];
     const isExamRequest = examKeywords.some(kw => input.toLowerCase().includes(kw));
-    
+
     try {
       let responseText = "";
       let generatedQuestions: Question[] = [];
 
       if (isExamRequest && onGenerateExam) {
         // 1. Call specific Exam Generation Logic
-        generatedQuestions = await geminiService.generateExamQuestions(input, 3);
-        
+        generatedQuestions = await aiService.generateExamQuestions(input, 3);
+
         if (generatedQuestions.length > 0) {
           responseText = `我已经基于"${input}"生成了一个包含${generatedQuestions.length}道题的练习集。你可以在'我的考试'标签页中找到它。`;
-          
+
           // Trigger App-level state update
           onGenerateExam(input, generatedQuestions);
         } else {
-           // Fallback if generation fails or API key is missing
-           responseText = await geminiService.sendMessage(input); 
+          // Fallback if generation fails or API key is missing
+          responseText = await aiService.sendMessage(input);
         }
       } else {
         // 2. Normal Conversation
-        responseText = await geminiService.sendMessage(input);
+        responseText = await aiService.sendMessage(input);
       }
 
       const modelMsg: ChatMessage = {
@@ -78,7 +90,7 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
         text: responseText,
         timestamp: Date.now(),
       };
-      setMessages(prev => [...prev, modelMsg]);
+      updateMessages(prev => [...prev, modelMsg]);
     } catch (err) {
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -86,7 +98,7 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
         text: "抱歉，我遇到了连接错误。请检查您的API密钥。",
         timestamp: Date.now(),
       };
-      setMessages(prev => [...prev, errorMsg]);
+      updateMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -110,12 +122,12 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
             <h3 className="font-bold text-slate-800">电信AI导师</h3>
             <p className="text-xs text-slate-500 flex items-center gap-1">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              在线 • 由 Gemini 2.5 驱动
+              在线 • 多模型支持
             </p>
           </div>
         </div>
-        <button 
-          onClick={() => setMessages([])}
+        <button
+          onClick={() => updateMessages(() => [])}
           className="text-xs text-slate-400 hover:text-slate-600 font-medium"
         >
           清除历史
@@ -123,26 +135,55 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
-        {messages.map((msg) => (
+        {chatMessages.map((msg) => (
           <div
             key={msg.id}
             className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-              msg.role === 'user' ? 'bg-slate-800 text-white' : 'bg-blue-600 text-white'
-            }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-slate-800 text-white' : 'bg-blue-600 text-white'
+              }`}>
               {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
             </div>
-            
+
             <div className={`max-w-[80%] space-y-1 ${msg.role === 'user' ? 'items-end flex flex-col' : ''}`}>
-              <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                msg.role === 'user' 
-                  ? 'bg-slate-800 text-white rounded-tr-none' 
-                  : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
-              }`}>
-                {msg.text.split('\n').map((line, i) => (
-                  <p key={i} className={line.trim() === '' ? 'h-2' : ''}>{line}</p>
-                ))}
+              <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
+                ? 'bg-slate-800 text-white rounded-tr-none'
+                : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
+                }`}>
+                {msg.role === 'model' ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      // 自定义渲染组件
+                      h1: ({ node, ...props }) => <h1 className="text-xl font-bold mb-3 mt-2" {...props} />,
+                      h2: ({ node, ...props }) => <h2 className="text-lg font-bold mb-2 mt-2" {...props} />,
+                      h3: ({ node, ...props }) => <h3 className="text-base font-bold mb-2 mt-2" {...props} />,
+                      p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                      ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                      ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                      li: ({ node, ...props }) => <li className="ml-2" {...props} />,
+                      code: ({ node, inline, ...props }: any) =>
+                        inline ? (
+                          <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono" {...props} />
+                        ) : (
+                          <code className="block bg-slate-50 p-2 rounded my-2 text-xs font-mono overflow-x-auto" {...props} />
+                        ),
+                      pre: ({ node, ...props }) => <pre className="bg-slate-50 p-3 rounded my-2 overflow-x-auto" {...props} />,
+                      blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-blue-500 pl-4 italic my-2" {...props} />,
+                      a: ({ node, ...props }) => <a className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                      strong: ({ node, ...props }) => <strong className="font-bold" {...props} />,
+                      em: ({ node, ...props }) => <em className="italic" {...props} />,
+                      hr: ({ node, ...props }) => <hr className="my-4 border-slate-200" {...props} />,
+                    }}
+                  >
+                    {msg.text}
+                  </ReactMarkdown>
+                ) : (
+                  // 用户消息保持原样
+                  msg.text.split('\n').map((line, i) => (
+                    <p key={i} className={line.trim() === '' ? 'h-2' : ''}>{line}</p>
+                  ))
+                )}
               </div>
               <span className="text-[10px] text-slate-400 px-1">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -150,7 +191,7 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
             </div>
           </div>
         ))}
-        
+
         {isLoading && (
           <div className="flex gap-4">
             <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
@@ -171,22 +212,21 @@ export const ChatAgent: React.FC<ChatAgentProps> = ({ role, onGenerateExam }) =>
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={role === Role.TEACHER 
-              ? "例如：生成一个涵盖采样和QAM的期中考试..." 
+            placeholder={role === Role.TEACHER
+              ? "例如：生成一个涵盖采样和QAM的期中考试..."
               : "例如：给我一些关于OFDM循环前缀的练习题..."
             }
             className="flex-1 bg-transparent border-none focus:ring-0 resize-none outline-none text-sm text-slate-700 placeholder:text-slate-400 max-h-32 p-2"
             rows={1}
             style={{ minHeight: '44px' }}
           />
-          <button 
+          <button
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            className={`p-2 rounded-lg transition-colors ${
-              !input.trim() || isLoading 
-                ? 'text-slate-300 bg-slate-100' 
-                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200'
-            }`}
+            className={`p-2 rounded-lg transition-colors ${!input.trim() || isLoading
+              ? 'text-slate-300 bg-slate-100'
+              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200'
+              }`}
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>

@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { CloudSun, Search, Bell, User, BookOpen } from 'lucide-react';
 
-export const MenuBar: React.FC = () => {
+interface MenuBarProps {
+  onOpenGuide?: () => void;
+  onOpenMessages?: () => void;
+  onOpenProfile?: () => void;
+  onOpenSearch?: () => void;
+}
+
+export const MenuBar: React.FC<MenuBarProps> = ({ 
+  onOpenGuide, 
+  onOpenMessages, 
+  onOpenProfile, 
+  onOpenSearch 
+}) => {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -48,22 +60,34 @@ export const MenuBar: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex gap-2 lg:gap-4">
-          <button className="flex items-center gap-2 glass-card px-2 lg:px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-white hover:scale-105 transition-all">
+          <button 
+            onClick={onOpenGuide}
+            className="flex items-center gap-2 glass-card px-2 lg:px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-white hover:scale-105 transition-all cursor-pointer"
+          >
             <BookOpen className="w-5 h-5 text-blue-500" />
             <span className="hidden lg:inline">指南</span>
           </button>
-          <button className="flex items-center gap-2 glass-card px-2 lg:px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-white hover:scale-105 transition-all">
+          <button 
+            onClick={onOpenMessages}
+            className="flex items-center gap-2 glass-card px-2 lg:px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-white hover:scale-105 transition-all cursor-pointer"
+          >
             <Bell className="w-5 h-5 text-indigo-500" />
             <span className="hidden lg:inline">消息</span>
           </button>
-          <button className="flex items-center gap-2 glass-card px-2 lg:px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-white hover:scale-105 transition-all">
+          <button 
+            onClick={onOpenProfile}
+            className="flex items-center gap-2 glass-card px-2 lg:px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-white hover:scale-105 transition-all cursor-pointer"
+          >
             <User className="w-5 h-5 text-purple-500" />
             <span className="hidden lg:inline">我</span>
           </button>
         </div>
 
         {/* Search Bar */}
-        <div className="glass-card rounded-full p-3 hover:bg-white transition-colors cursor-pointer">
+        <div 
+          onClick={onOpenSearch}
+          className="glass-card rounded-full p-3 hover:bg-white transition-colors cursor-pointer"
+        >
           <Search className="w-5 h-5 text-slate-500" />
         </div>
       </div>

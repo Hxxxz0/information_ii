@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Circle, Plus, Calendar, Clock, Trash2 } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Calendar, Clock, Trash2, Edit2, Save, X } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -16,6 +16,12 @@ export const PlanApp: React.FC = () => {
     { id: '3', title: '完成MIMO练习题', completed: false, dueDate: '2024-12-26', time: '16:00' },
   ]);
   const [newTask, setNewTask] = useState('');
+  const [newTaskDate, setNewTaskDate] = useState('');
+  const [newTaskTime, setNewTaskTime] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
 
   const addTask = () => {
     if (!newTask.trim()) return;
@@ -23,9 +29,13 @@ export const PlanApp: React.FC = () => {
       id: Date.now().toString(),
       title: newTask,
       completed: false,
+      dueDate: newTaskDate || undefined,
+      time: newTaskTime || undefined,
     };
     setTasks([...tasks, task]);
     setNewTask('');
+    setNewTaskDate('');
+    setNewTaskTime('');
   };
 
   const toggleTask = (id: string) => {
@@ -34,6 +44,40 @@ export const PlanApp: React.FC = () => {
 
   const deleteTask = (id: string) => {
     setTasks(tasks.filter(t => t.id !== id));
+    if (editingId === id) {
+      setEditingId(null);
+    }
+  };
+
+  const startEdit = (task: Task) => {
+    setEditingId(task.id);
+    setEditTitle(task.title);
+    setEditDate(task.dueDate || '');
+    setEditTime(task.time || '');
+  };
+
+  const saveEdit = () => {
+    if (!editingId) return;
+    if (!editTitle.trim()) {
+      alert('任务标题不能为空');
+      return;
+    }
+    setTasks(tasks.map(t => 
+      t.id === editingId 
+        ? { ...t, title: editTitle.trim(), dueDate: editDate || undefined, time: editTime || undefined }
+        : t
+    ));
+    setEditingId(null);
+    setEditTitle('');
+    setEditDate('');
+    setEditTime('');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle('');
+    setEditDate('');
+    setEditTime('');
   };
 
   return (
@@ -46,22 +90,46 @@ export const PlanApp: React.FC = () => {
 
         {/* Add Task */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-lg border border-emerald-200">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
-              placeholder="添加新任务..."
-              className="flex-1 px-4 py-2 rounded-xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-            />
-            <button
-              onClick={addTask}
-              className="px-6 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              添加
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addTask()}
+                placeholder="添加新任务..."
+                className="flex-1 px-4 py-2 rounded-xl border border-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+              <button
+                onClick={addTask}
+                className="px-6 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                添加
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                <Calendar className="w-4 h-4 text-emerald-600" />
+                <input
+                  type="date"
+                  value={newTaskDate}
+                  onChange={(e) => setNewTaskDate(e.target.value)}
+                  className="flex-1 bg-transparent border-none focus:outline-none text-sm text-slate-700"
+                  placeholder="选择日期"
+                />
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                <Clock className="w-4 h-4 text-emerald-600" />
+                <input
+                  type="time"
+                  value={newTaskTime}
+                  onChange={(e) => setNewTaskTime(e.target.value)}
+                  className="flex-1 bg-transparent border-none focus:outline-none text-sm text-slate-700"
+                  placeholder="选择时间"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -74,47 +142,118 @@ export const PlanApp: React.FC = () => {
                 task.completed ? 'border-emerald-300 opacity-75' : 'border-emerald-200'
               }`}
             >
-              <div className="flex items-start gap-4">
-                <button
-                  onClick={() => toggleTask(task.id)}
-                  className="mt-1 flex-shrink-0"
-                >
-                  {task.completed ? (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                  ) : (
-                    <Circle className="w-6 h-6 text-emerald-400" />
-                  )}
-                </button>
-                <div className="flex-1">
-                  <h3
-                    className={`font-bold text-lg mb-2 ${
-                      task.completed ? 'line-through text-slate-400' : 'text-slate-800'
-                    }`}
+              {editingId === task.id ? (
+                // Edit Mode
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400 font-bold text-lg"
+                    placeholder="任务标题"
+                    autoFocus
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                      <Calendar className="w-4 h-4 text-emerald-600" />
+                      <input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className="flex-1 bg-transparent border-none focus:outline-none text-sm text-slate-700"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                      <Clock className="w-4 h-4 text-emerald-600" />
+                      <input
+                        type="time"
+                        value={editTime}
+                        onChange={(e) => setEditTime(e.target.value)}
+                        className="flex-1 bg-transparent border-none focus:outline-none text-sm text-slate-700"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={cancelEdit}
+                      className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      取消
+                    </button>
+                    <button
+                      onClick={saveEdit}
+                      className="px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors flex items-center gap-2"
+                    >
+                      <Save className="w-4 h-4" />
+                      保存
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // View Mode
+                <div className="flex items-start gap-4">
+                  <button
+                    onClick={() => toggleTask(task.id)}
+                    className="mt-1 flex-shrink-0"
                   >
-                    {task.title}
-                  </h3>
-                  {task.dueDate && (
+                    {task.completed ? (
+                      <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                    ) : (
+                      <Circle className="w-6 h-6 text-emerald-400" />
+                    )}
+                  </button>
+                  <div className="flex-1">
+                    <h3
+                      className={`font-bold text-lg mb-2 ${
+                        task.completed ? 'line-through text-slate-400' : 'text-slate-800'
+                      }`}
+                    >
+                      {task.title}
+                    </h3>
                     <div className="flex items-center gap-4 text-sm text-slate-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>{task.dueDate}</span>
-                      </div>
-                      {task.time && (
+                      {task.dueDate ? (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>{task.dueDate}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-slate-300">
+                          <Calendar className="w-4 h-4" />
+                          <span>未设置日期</span>
+                        </div>
+                      )}
+                      {task.time ? (
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
                           <span>{task.time}</span>
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-slate-300">
+                          <Clock className="w-4 h-4" />
+                          <span>未设置时间</span>
+                        </div>
                       )}
                     </div>
-                  )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEdit(task)}
+                      className="p-2 hover:bg-emerald-50 rounded-lg text-emerald-400 hover:text-emerald-600 transition-colors"
+                      title="编辑任务"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="p-2 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
+                      title="删除任务"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="p-2 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
+              )}
             </div>
           ))}
         </div>

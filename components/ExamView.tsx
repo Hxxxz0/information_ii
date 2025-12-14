@@ -91,18 +91,18 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
   // -- RENDER: ACTIVE EXAM MODE --
   if (activeExamId && activeExam) {
     return (
-      <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
-        <header className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-0 z-10">
-          <div className="flex items-center gap-3">
+      <div className="space-y-4 lg:space-y-6 animate-fade-in max-w-3xl mx-auto">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-0 z-10">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <button 
               onClick={() => setActiveExamId(null)}
-              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5 text-slate-500" />
             </button>
-            <div>
-              <h2 className="font-bold text-slate-900">{activeExam.title}</h2>
-              <p className="text-xs text-slate-500 flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-bold text-slate-900 text-base lg:text-lg break-words">{activeExam.title}</h2>
+              <p className="text-xs text-slate-500 flex items-center gap-2 mt-1">
                 <Clock className="w-3 h-3" /> {activeExam.durationMinutes} 分钟
               </p>
             </div>
@@ -110,31 +110,31 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
           {!showResults && (
              <button 
                onClick={handleSubmitExam}
-               className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
+               className="bg-blue-600 text-white px-4 lg:px-6 py-2 rounded-xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all w-full sm:w-auto"
              >
                提交考试
              </button>
           )}
           {showResults && (
-            <div className="bg-green-100 text-green-800 px-4 py-1 rounded-lg font-bold text-lg">
+            <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg font-bold text-base lg:text-lg text-center sm:text-left">
               分数：{score}/100
             </div>
           )}
         </header>
 
-        <div className="space-y-6 pb-12">
+        <div className="space-y-4 lg:space-y-6 pb-12">
           {activeExam.questions.map((q, idx) => {
             const userAnswer = answers[q.id];
             // Simple grading check
             const isCorrect = userAnswer === q.correctAnswer;
             
             return (
-              <div key={q.id} className={`bg-white p-6 rounded-2xl border shadow-sm transition-all ${
+              <div key={q.id} className={`bg-white p-4 lg:p-6 rounded-2xl border shadow-sm transition-all ${
                 showResults 
                   ? (isCorrect ? 'border-green-200 bg-green-50/30' : 'border-red-200 bg-red-50/30') 
                   : 'border-slate-100'
               }`}>
-                <div className="flex justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">问题 {idx + 1} • {translateQuestionType(q.type)}</span>
                   {showResults && (
                     isCorrect 
@@ -143,15 +143,15 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
                   )}
                 </div>
                 
-                <h3 className="text-lg font-medium text-slate-800 mb-6 leading-relaxed">{q.content}</h3>
+                <h3 className="text-base lg:text-lg font-medium text-slate-800 mb-4 lg:mb-6 leading-relaxed break-words">{q.content}</h3>
                 
                 {/* OPTIONS RENDER */}
                 {q.type === QuestionType.CHOICE && q.options ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2 lg:space-y-3">
                     {q.options.map((opt) => (
                       <label 
                         key={opt} 
-                        className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                        className={`flex items-center gap-2 lg:gap-3 p-3 lg:p-4 rounded-xl border cursor-pointer transition-all ${
                           showResults 
                             ? (opt === q.correctAnswer 
                                 ? 'bg-green-100 border-green-300 ring-1 ring-green-400' 
@@ -170,12 +170,12 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
                           disabled={showResults}
                           className="hidden"
                         />
-                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                        <div className={`w-4 h-4 lg:w-5 lg:h-5 rounded-full border flex items-center justify-center flex-shrink-0 ${
                           userAnswer === opt ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
                         }`}>
-                          {userAnswer === opt && <div className="w-2 h-2 bg-white rounded-full" />}
+                          {userAnswer === opt && <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-white rounded-full" />}
                         </div>
-                        <span className="text-slate-700">{opt}</span>
+                        <span className="text-sm lg:text-base text-slate-700 break-words flex-1">{opt}</span>
                       </label>
                     ))}
                   </div>
@@ -188,7 +188,7 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
                       onChange={(e) => !showResults && handleAnswerChange(q.id, e.target.value)}
                       disabled={showResults}
                       placeholder="在此输入您的答案..."
-                      className={`w-full p-4 rounded-xl border bg-slate-50 focus:bg-white outline-none transition-all ${
+                      className={`w-full p-3 lg:p-4 rounded-xl border bg-slate-50 focus:bg-white outline-none transition-all text-sm lg:text-base ${
                         showResults 
                            ? (isCorrect ? 'border-green-300 text-green-700' : 'border-red-300 text-red-700')
                            : 'border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
@@ -199,15 +199,15 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
 
                 {/* EXPLANATION RENDER */}
                 {showResults && (
-                  <div className="mt-6 pt-4 border-t border-slate-200/50 animate-fade-in">
-                    <div className="flex items-start gap-2 text-sm text-slate-600 bg-slate-100 p-4 rounded-xl">
-                       <AlertTriangle className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
-                       <div>
+                  <div className="mt-4 lg:mt-6 pt-4 border-t border-slate-200/50 animate-fade-in">
+                    <div className="flex items-start gap-2 text-xs lg:text-sm text-slate-600 bg-slate-100 p-3 lg:p-4 rounded-xl">
+                       <AlertTriangle className="w-4 h-4 lg:w-5 lg:h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+                       <div className="min-w-0 flex-1">
                          <span className="font-bold block text-slate-700 mb-1">解释：</span>
-                         {q.explanation}
+                         <span className="break-words">{q.explanation}</span>
                          {!isCorrect && (
                            <div className="mt-2 text-xs font-semibold text-slate-500">
-                             正确答案：<span className="text-slate-800">{q.correctAnswer}</span>
+                             正确答案：<span className="text-slate-800 break-words">{q.correctAnswer}</span>
                            </div>
                          )}
                        </div>
@@ -224,20 +224,20 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
 
   // -- RENDER: LIST MODE --
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex justify-between items-center">
+    <div className="space-y-4 lg:space-y-6 animate-fade-in">
+      <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">
+          <h2 className="text-xl lg:text-2xl font-bold text-slate-900">
             {role === Role.TEACHER ? '考试管理' : '我的考试与练习'}
           </h2>
-          <p className="text-slate-500 mt-1">
+          <p className="text-sm lg:text-base text-slate-500 mt-1">
             {role === Role.TEACHER 
               ? '创建、编辑和发布评估。' 
               : '即将到来的测试和过去的结果。'}
           </p>
         </div>
         {role === Role.TEACHER && (
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-blue-200 transition-all">
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-blue-200 transition-all w-full sm:w-auto justify-center">
             <Plus className="w-5 h-5" />
             新建考试
           </button>
@@ -246,30 +246,30 @@ export const ExamView: React.FC<ExamViewProps> = ({ role, exams, onStartExam, on
 
       <div className="grid grid-cols-1 gap-4">
         {displayExams.map((exam) => (
-          <div key={exam.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-xl ${
+          <div key={exam.id} className="bg-white p-4 lg:p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3 lg:gap-4 flex-1 min-w-0">
+              <div className={`p-2.5 lg:p-3 rounded-xl flex-shrink-0 ${
                 exam.status === 'completed' || exam.score !== undefined ? 'bg-green-100 text-green-600' : 'bg-indigo-100 text-indigo-600'
               }`}>
-                <FileText className="w-6 h-6" />
+                <FileText className="w-5 h-5 lg:w-6 lg:h-6" />
               </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-lg">{exam.title}</h3>
-                <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-500">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-slate-900 text-base lg:text-lg break-words">{exam.title}</h3>
+                <div className="flex flex-wrap gap-2 lg:gap-4 mt-2 text-xs lg:text-sm text-slate-500">
                   <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" /> {exam.durationMinutes} 分钟
+                    <Clock className="w-3 h-3 lg:w-4 lg:h-4" /> {exam.durationMinutes} 分钟
                   </span>
                   <span className="flex items-center gap-1">
-                    <BarChart2 className="w-4 h-4" /> {exam.totalScore} 分
+                    <BarChart2 className="w-3 h-3 lg:w-4 lg:h-4" /> {exam.totalScore} 分
                   </span>
                   <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4" /> {exam.questions.length} 题
+                    <CheckCircle className="w-3 h-3 lg:w-4 lg:h-4" /> {exam.questions.length} 题
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 self-end md:self-center">
+            <div className="flex items-center gap-3 self-end md:self-center flex-shrink-0">
                {role === Role.STUDENT ? (
                   (exam.status === 'completed' || exam.score !== undefined) ? (
                     <button className="px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg border border-green-100">
